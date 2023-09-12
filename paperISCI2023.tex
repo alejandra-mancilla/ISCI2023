@@ -33,10 +33,10 @@
 
 \begin{document}
 %
-\title{Optimization of Fuzzy Controllers using Distributed Bioinspired Methods with Random Parameters} 
+\title{Fuzzy Adaptation of Parameters in a Multi-Swarm Particle Swarm Optimization (PSO) Algorithm Applied to the Optimization of a Fuzzy Controller } 
 
 %
-\titlerunning{Distributed Bioinspired Methods with Random Parameters}
+\titlerunning{Fuzzy Adaptation of Parameters in a MS-PSO}
 % If the paper title is too long for the running head, you can set
 % an abbreviated paper title here
 %
@@ -56,30 +56,9 @@ Mario García-Valdez\orcidID{0000-0002-2593-1114}}
 %
 \begin{abstract}
 
-     The optimization of fuzzy controllers is a task that requires a high
-     demand for computational resources since it is necessary to carry out a
-     large number of simulations to evaluate the operation of the controller.
-     This is time-consuming work, and because of this, distributed and
-     asynchronous bio-inspired algorithms have been proposed recently to make
-     the execution achieve acceptable results in terms of scaling and
-     optimization improvement. These algorithms use multiple populations and
-     processors to search algorithms in parallel on each population. A problem
-     with these algorithms is finding the ideal configuration that we will use
-     to execute the algorithms, such as the number of populations, the number
-     of processors needed, and particularly the parameters that affect the
-     exploration and exploitation in the search. In this work, we compare
-     homogeneous configurations for all populations against heterogeneous
-     configurations in which we randomly define the parameters. We want to
-     evaluate if this strategy helps us to minimize the evaluation time and
-     minimize the RMSE. We will use genetic and particle swarm optimization
-     algorithms in this experiment. As a case study, we applied the algorithms
-     to optimize the membership functions of a fuzzy controller for the
-     trajectory tracking of a mobile autonomous robot. Results show that even
-     when we use random parameters in our algorithms, we continue to obtain an
-     RMSE similar to the previous results. We also observe a reduction in
-     execution time.    
+     Many control problems require running many simulations to establish the optimal parameters for the controller. One option is to use population-based distributed algorithms. A common configuration is to employ multiple independent populations to run parallel search algorithms, with each population running in an independent processor. One issue with these algorithms is finding the ideal configuration to improve their performance, such as the number of populations, the number of processors, and particularly the parameters that affect exploration and exploitation in the search. In this work, we suggest a version of multi-swarm Particle Swarm Optimization (PSO) that includes a Fuzzy Inference System (FIS) to dynamically adjust the algorithm's parameters. The adjustment considers two variables: population diversity and the number of iterations performed on the population. As an output of the FIS, we obtain the adapted parameters, representing the new values for the social coefficient and the cognitive coefficient to be used in the next iteration. We aim to evaluate if this strategy helps minimize the evaluation time and minimize the root-mean-square error (RMSE). As a case study, the distributed PSO algorithm is applied to optimize the membership functions of a fuzzy controller for tracking the trajectory of an autonomous mobile robot. The results indicate that the proposed strategy for optimizing the algorithm's parameters achieves an RMSE similar to the results found in previous works.
 
-\keywords{Fuzzy Control \and Bio-Inspired Algorithms \and Distributed Algorithms}
+\keywords{Fuzzy Control \and Distributed Algorithms \and Parameter Adaptation}
 \end{abstract}
 %
 %
@@ -119,6 +98,208 @@ Section \ref{sec:conclusions}.
 
 \section{Methodology and Experimental Setup}\label{sec:experiments}
 
+Multi-swarm optimization is a variant of particle swarm optimization (PSO) based on the use of multiple sub-swarms instead of one (standard) swarm.
+
+This adds new design choices not found in a single swarm:
+
+\begin{itemize}
+    \item Each swarm can have a different configuration.
+    \item Size of each swarm.
+    \item How swarms communicate.
+    \item How often.
+    \item Non-random initial position of particles.
+\end{itemize}
+
+\textbf{Exploitation} considers the information obtained from the best solutions found so far.  
+C1 (Cognitive Coefficient) controls how much the best personal  solutions influence the swarm. 
+\textbf{Exploration} helps discover unexplored regions and avoid premature convergence. 
+C2 (Social Coefficient) controls how much the best global solution influences the swarm.
+Achieving a balance between these two parameters is a critical problem facing most current search and optimization techniques. 
+
+In this work, we propose a new fuzzy strategy to improve the balance between exploration and exploitation in the Particle Swarm Optimization algorithm. We analyzed how two versions of a distributed parametrization strategy behave in this kind of problem, so we can use this approach in future research. We aim at refining its design and improving the overall performance.
+
+In this work, we use a technique called Dynamic Parameter Adaptation.It is a technique widely used today to improve the performance of bio-inspired algorithms. The idea is to change the values of the parameters while the algorithm is in execution, to get better results. In this work, a fuzzy inference system is used for adapting the parameters.
+
+It is important that the exploration of the solution space is carried out correctly, for which it is necessary to maintain in the population individuals with different characteristics that represent the majority of the search space.  This means, that we must maintain a diversity in the population (Fig.  \ref{fig:diversity}). Therefore, if we have a low diversity it means that the particle is exploiting the search space, if the diversity is high it means that the search space is being explored. In a search algorithm, a high diversity is desired at the \textbf{beginning} of the run. While a low diversity is desired at the \textbf{end} of the run.
+
+\begin{figure}
+  \centering
+  \includegraphics[angle=0,width=1\textwidth]{diversity}
+  \caption{Dynamic Parameter Adaptation}
+  \label{fig:diversity} 
+\end{figure}
+
+
+As an example, in a single swarm algorithm (Fig. \ref{fig:generation}).
+We want to have a high diversity at the beginning of the run.  There is high diversity when we start, because each particle is created with random values, and from there, diversity  begins to decrease as the algorithm advances, in which case the particles begin exploring and ends up exploiting the search space.
+
+If the generation is low, that is, it is starting, the cognitive coefficient (C1) is set to low, and the social coefficient (C2) will be set to high because we want exploring  particles.
+
+\begin{figure}
+  \centering
+  \includegraphics[angle=0,width=1\textwidth]{FM generation.pdf}
+  \caption{IF Generation is LOW then C1 is LOW and C2 is HIGH}
+  \label{fig:generation} 
+\end{figure}
+
+We define a FIS to adapt the coefficients C1 and C2 of the PSO algorithm, in which we have the number of cycles and diversity as input variables, and C1 and C2 as output variables.
+On the right side we see an example of how diversity changes in each generation in a PSO algorithm. We measure the diversity and adjust C1 and C2 accordingly, this is done for each cycle defined in the combiner phase, in each swarm.
+
+As we have mentioned, we can do the parameter adaptation in each iteration of the local PSO, but we can also do it in each cycle of the combiner. For our work we experimented  with both strategies and based on the results we decided to do the parameter adjustment by cycles because it gave similar results (Fig. \ref{fig:adap}).
+
+\begin{figure}[ht]
+  \centering
+  \begin{subfigure}{0.8\textwidth}
+    \includegraphics[angle=0,width=1\textwidth]{adaptation local.pdf}
+    \caption{Adaptation can be on each iteration on the local PSO.}
+    \label{fig:adap_local} 
+  \end{subfigure}
+
+  \begin{subfigure}{0.8\textwidth}
+     \includegraphics[angle=0,width=1\textwidth]{adaptation combiner.pdf}
+     \caption{Adaptation can be done on each cycle of the combiner.}
+     \label{fig:adap_combiner} 
+  \end{subfigure}
+\caption{Strategies for parameter adjustment.}
+\label{fig:adap}
+\end{figure}
+
+Here we have the multi swarm design, in which multiple swarms are created and added to an Input queue, these swarms are then evolved by multiple workers , and finally they migrate in the combinator process. This cycle is repeated a number or times. The dynamic adaptation of C1 and C2 is executed each time a swarm reaches the combinator.
+
+Here we have the membership functions of the input and output variables (Fig. \ref{fig:member}). 
+We tested and found that the diversity for our use case is less than 20. And the number of cycles is 10. C1 and C2 are defined between 1 and 2.
+
+\begin{figure}
+  \centering
+  \includegraphics[angle=0,width=1\textwidth]{FM generation.pdf}
+  \caption{Membership Functions}
+  \label{fig:member} 
+\end{figure}
+
+With these variables, we proposed a controller with nine fuzzy rules. We show in the Table \ref{tab:fuzzy_rules}. 
+
+\begin{table}[ht] 
+\caption{Fuzzy Rules}\label{tab:fuzzy_rules}
+\setlength{\tabcolsep}{10pt}
+\begin{tabular}{l l l l l l l}
+\hline
+\textbf{Algorithm} & \textbf{Parameter}	& \textbf{Range [min,max]}\\ \hline
+PSO & Topology & Fully connected  \\
+& Speed limit  & Min=[-0.20, -0.30] \\
+&              & Max=[0.20, 0.30]  \\
+& Cognitive and Social $C_1,C_2$ &  [1.0, 2.0]  \\ \hline
+Polutations & Pop Size                & 10  \\
+            & Number of Swarm         & 16 \\
+            & Number of Generation    &  8 \\
+            & Number of Cycles        & 10   \\
+            & Number of Parameters    & 15   \\   
+            & \#Func. Eval.           & 12800 \\ \hline
+\end{tabular}
+\end{table}
+\subsection{Use Case}\label{sub:use_case}
+
+Here we have the optimization use case. We optimize the membership functions for a benchmark control problem. A rear-wheel controller described by Paden et al.
+
+The parameters of the distributed PSO algorithm are shown in this Table  \ref{tab:alg_params}.
+We setup the algorithm with sixteen swarms with ten particles each. Each worker will run eight iterations (generations) of the algorithm before returning the swarm to the output queue. All swarms will complete ten cycles; this means that they will go through the combiner ten times.
+
+
+\begin{table}[ht] 
+\caption{Experimental Setup}\label{tab:alg_params}
+\setlength{\tabcolsep}{10pt}
+\begin{tabular}{l l l}
+\hline
+\textbf{Algorithm} & \textbf{Parameter}	& \textbf{Range [min,max]}\\ \hline
+PSO & Topology & Fully connected  \\
+& Speed limit  & Min=[-0.20, -0.30] \\
+&              & Max=[0.20, 0.30]  \\
+& Cognitive and Social $C_1,C_2$ &  [1.0, 2.0]  \\ \hline
+Polutations & Pop Size                & 10  \\
+            & Number of Swarm         & 16 \\
+            & Number of Generation    &  8 \\
+            & Number of Cycles        & 10   \\
+            & Number of Parameters    & 15   \\   
+            & \#Func. Eval.           & 12800 \\ \hline
+\end{tabular}
+\end{table}
+
+\section{Results}\label{sec:results}
+
+In Table \ref{tab:rmse}, we show the results of the experiments. The distributed results with parameters with dynamically adjusted values are compared against a distributed version initialized with random parameters for each swarm; this is found in our previous work.
+
+We can note that the distributed PSO with dynamic parameter adaptation implementation yields better results than the distributed heterogeneous parameters on average. Here we show the average ERROR obtained in thirty runs.
+
+
+\begin{table}[ht]
+    \caption{Results the best RMSE.} 
+    \label{tab:rmse}
+    \centering
+    \setlength{\tabcolsep}{10pt}
+    \begin{tabular}{|c|c|c|}      \hline
+      \multicolumn{3}{|c|}{RMSE} \\ \hline
+      & {Heterogeneous Parameters}  & {  Dynamic Parameter Adaptation} \\ \hline
+    AVERAGE   & 0.00305315 & 0.00284276 \\ \hline
+    STDDEV    & 0.00080043 & 0.00064820 \\ \hline   
+    MEDIAN    & 0.00290360 & 0.00271963 \\ \hline 
+    MIN       & 0.00127626 & 0.00168746 \\ \hline   
+    MAX       & 0.00496247 & 0.00448633 \\ \hline    
+      \end{tabular}
+\end{table}
+
+We did the statistical test Z, comparing the same algorithms but with heterogeneous parameters and the algorithms with dynamic adaptation of parameters, which we concluded that there is not enough evidence to reject the null hypothesis.
+We see from the results that the p-value is not within the acceptable confidence interval. We show in Table \ref{tab:ztest}.
+
+ \begin{table}[ht]
+  \caption{Statistical Ztest.}
+  \label{tab:ztest}
+  \centering
+  \setlength{\tabcolsep}{8pt}
+  \begin{tabular}{|c|c|c|}    \hline
+    \multicolumn{3}{|c|}{  p-values,  Z-test $\alpha$=0.05,  independent samples,  unequal variances,  30 samples  }  \\ [1ex] \hline
+    $H_a$ : $\mu_{eAi}$ $>$ $\mu_{eAj}$ &  Heterogeneous Parameters      & Dynamic Parameter Adaptation  \\   \hline
+         Heterogeneous Parameters     &     & 0.8659\cellcolor{lightgray}  \\  \hline
+         Dynamic Parameter Adaptation     &   0.1341\cellcolor{lightgray}  & \\ \hline    
+ \end{tabular}
+ \end{table}
+
+We show a box-plot of the data in Fig. \ref{fig:boxplot}, and we can see that
+there is no significant difference between the median of the same algorithms.
+
+\begin{figure}[ht]
+  \centering
+  \includegraphics[angle=0,width=1\textwidth]{RplotAjusteParam.pdf}
+  \caption{Box-plot of the data.}
+  \label{fig:boxplot} 
+\end{figure}
+
+\section{Conclusions and Future Work}\label{sec:conclusions}
+
+We presented a design and implementation of a distributed multi-swarm algorithm method to optimize the parameters of the MFs for a fuzzy controller.
+
+We run experiments with two strategies, fuzzy adaptation and heterogeneous configurations of the algorithms.
+
+We found that both strategies yield similar results.
+
+As a next step, we could implement other parameter adaptation strategies.
+
+
+%
+% ---- Bibliography ----
+%
+% BibTeX users should specify bibliography style 'splncs04'.
+% References will then be sorted and formatted in the correct style.
+%
+\bibliographystyle{splncs03_unsrt}
+\bibliography{biblio}
+%
+%\begin{thebibliography}{8}
+
+%\end{thebibliography}
+\end{document}
+
+
+***
+****
 We continue with our previous work, in which we optimized the parameters for a
 fuzzy controller used for path tracking by an autonomous mobile robot. This
 problem is particularly time-consuming because we could follow these three
