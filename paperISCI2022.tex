@@ -1,0 +1,457 @@
+% this is samplepaper.tex, a sample chapter demostrating the
+% LLNCS macro package for Springer Computer Science proceedings;
+% Version 2.20 of 2017/10/04
+%
+\documentclass[runningheads]{llncs}
+%
+\usepackage{graphicx}
+\usepackage{listings}
+
+\usepackage{subcaption}
+\usepackage{array}
+
+\usepackage[table]{xcolor}
+\usepackage{multirow,bigstrut}
+\usepackage{rotating}
+%...
+
+%\usepackage{siunitx} % Required for alignment
+
+%\sisetup{
+%  round-mode          = places, % Rounds numbers
+%  round-precision     = 4, % to 4 places
+%}
+
+%..
+
+% Used for displaying a sample figure. If possible, figure files should
+% be included %in EPS format.
+%
+% If you use the hyperref package, please uncomment the following line
+% to display URLs in blue roman font according to Springer's eBook style:
+% \renewcommand\UrlFont{\color{blue}\rmfamily}
+
+\begin{document}
+%
+\title{Optimization of Fuzzy Controllers using Distributed Bioinspired Methods with Random Parameters} 
+
+%
+\titlerunning{Distributed Bioinspired Methods with Random Parameters}
+% If the paper title is too long for the running head, you can set
+% an abbreviated paper title here
+%
+\author{Alejandra Mancilla\orcidID{0000-0003-0430-8152} \and
+Oscar Castillo\orcidID{0000-0002-7385-5689} \and
+Mario García-Valdez\orcidID{0000-0002-2593-1114}}
+%
+\authorrunning{A. Mancilla et al.}
+% First names are abbreviated in the running head.
+% If there are more than two authors, 'et al.' is used.
+%
+\institute{Tijuana Institute of Technology / Tecnologico Nacional de Mexico, Tijuana, Mexico\\
+    \email{\{alejandra.mancilla,mario\}@tectijuana.edu.mx,ocastillo@tectijuana.mx}}
+
+%
+\maketitle              % typeset the header of the contribution
+%
+\begin{abstract}
+
+     The optimization of fuzzy controllers is a task that requires a high
+     demand for computational resources since it is necessary to carry out a
+     large number of simulations to evaluate the operation of the controller.
+     This is time-consuming work, and because of this, distributed and
+     asynchronous bio-inspired algorithms have been proposed recently to make
+     the execution achieve acceptable results in terms of scaling and
+     optimization improvement. These algorithms use multiple populations and
+     processors to search algorithms in parallel on each population. A problem
+     with these algorithms is finding the ideal configuration that we will use
+     to execute the algorithms, such as the number of populations, the number
+     of processors needed, and particularly the parameters that affect the
+     exploration and exploitation in the search. In this work, we compare
+     homogeneous configurations for all populations against heterogeneous
+     configurations in which we randomly define the parameters. We want to
+     evaluate if this strategy helps us to minimize the evaluation time and
+     minimize the RMSE. We will use genetic and particle swarm optimization
+     algorithms in this experiment. As a case study, we applied the algorithms
+     to optimize the membership functions of a fuzzy controller for the
+     trajectory tracking of a mobile autonomous robot. Results show that even
+     when we use random parameters in our algorithms, we continue to obtain an
+     RMSE similar to the previous results. We also observe a reduction in
+     execution time.    
+
+\keywords{Fuzzy Control \and Bio-Inspired Algorithms \and Distributed Algorithms}
+\end{abstract}
+%
+%
+\section{Introduction}
+
+In a recent paper, we presented a distributed algorithm for multi-population
+metaheuristics \cite{mancilla2022optimal,mancilla2022tracking} using Genetic
+Algorithms (GAs) \cite{back1996evolutionary,holland1992adaptation} and Particle
+Swarm Optimization (PSO) \cite{kennedy2006swarm,clerc2010particle}. We execute
+this algorithm asynchronously using a queue-based architecture
+\cite{valdez2021container,merelo2018introducing}. One of the problems of using
+a multi-population multi-heuristic approach is that we need to set the
+algorithms' parameters for each population \cite{ma2019multi}. Finding these
+parameters is time-consuming because we need to run several experiments trying
+different configurations until we find a suitable parametrization. This problem
+could be especially problematic if we have a multi-population algorithm
+consisting of several small populations, each with a set of initial parameters
+we need to set.
+
+To tackle this problem, in the past, we followed a homogeneous
+approach \cite{Mancilla2021}, simply using the same set of parameters for all
+populations. In this case, we have two types of algorithms: some populations
+run a GA while others execute a PSO. This situation adds another layer to the
+problem because each algorithm requires different parameters. In this work, we
+compare two strategies to set the initial parameters of the algorithms of the
+multi-populations. The first is a homogeneous approach with fixed values, and
+the second is a heterogeneous strategy selecting random values from a
+predefined range of values established for some of the parameters of the
+algorithms \cite{gong2011distributed,hernandez2017randomized}. 
+
+We organized this paper as follows. First, in Section \ref{sec:experiments}, we
+describe our proposal and define the experimental setup consisting on
+optimizing a fuzzy rear-wheel controller using different configurations on a
+benchmark problem. We show and discuss the results in Section
+\ref{sec:results}. Finally, we present our conclusions and future work in
+Section \ref{sec:conclusions}.
+
+\section{Methodology and Experimental Setup}\label{sec:experiments}
+
+We continue with our previous work, in which we optimized the parameters for a
+fuzzy controller used for path tracking by an autonomous mobile robot. This
+problem is particularly time-consuming because we could follow these three
+steps to optimize this type of controller: First, we run one or more
+simulations with the controller; this is time-consuming, then we measure the
+controller's error in each simulation, calculate an average, and if we are not
+satisfied with the results, we adjust the parameters and start again. That is
+why designers of fuzzy controllers often use population-based metaheuristics to
+adjust these parameters. However, even when using a metaheuristic, fuzzy
+controller optimization continues to be time-consuming. We briefly explain the
+multi-population multi-heuristic algorithm used in this paper. The authors more
+extensively explain the algorithm in \cite{mancilla2022optimal}.
+
+We propose an event-based, distributed algorithm that exchanges data between
+processes using message queues for asynchronous communication (see Fig.
+\ref{fig:Diagrams}). (1) We start the algorithm by executing a single task that
+pushes a specified $n$ number of populations to the Population Queue. Each
+population message contains the initial configuration and the type of
+metaheuristic used by that particular population. The main idea is that each
+process runs a metaheuristic for a small number of iterations on a population
+received as a message and then pushes the resulting (evolved) population to the
+Evolved Population Queue (4). (3) Workers take messages asynchronously to
+process the data (populations). Each worker inside a container continuously
+checks for messages in the Population Queue and, after receiving a population,
+executes a metaheuristic on this population for several iterations. (4)
+resulting populations from the Evolved Population Queue. (5-6) An essential
+component of the architecture is the Combinator process, responsible for taking
+the resulting populations from the Evolved Population Queue and, after reading
+the message, stopping the algorithm if the number of function evaluations has
+been reached or if a suitable solution was found.
+
+However, the primary responsibility of this component is to migrate or combine
+populations arriving from the Evolved Population Queue. The combination method
+we propose in this work is as follows. We take the top two best solutions from
+each population and insert them in a buffer that always keeps the top-k
+solutions. Finally, we replace the two worst solutions for the population with
+the buffer's current first and second-best solutions.
+
+\begin{figure}
+  \centering
+  \includegraphics[angle=0,width=1\textwidth]{Diagrams}
+  \caption{Proposed architecture for event-based distributed population-based algorithms.}
+  \label{fig:Diagrams} 
+\end{figure}
+
+\begin{figure}[ht]
+  \centering
+  \begin{subfigure}{0.8\textwidth}
+    \includegraphics[angle=0,width=1\textwidth]{homogeneo}
+    \caption{Homogeneous strategy.}
+    \label{fig:s_homogeneo} 
+  \end{subfigure}
+
+  \begin{subfigure}{0.8\textwidth}
+     \includegraphics[angle=0,width=1\textwidth]{heterogeneo}
+     \caption{Heterogeneous strategy.}
+     \label{fig:s_heterogeneo} 
+  \end{subfigure}
+\caption{ Illustration of the type of strategies compared in this work.}
+\label{fig:s_strategies}
+\end{figure}
+
+One of the problems of metaheuristics is establishing the initial values of the
+algorithm's parameters. Usually, bio-inspired metaheuristics have parameters
+that control how much the algorithm does an exploration or exploitation over
+the search space \cite{yang2013swarm}. If the algorithm exploits too much, there is a higher risk of
+premature convergence to a local minimum. On the other hand, if there is too
+much exploration, the algorithm will search allmost randomly, constantly
+changing the area of attention. A balance between the two types of search is
+required to escape local minima while simultaneously doing a local search in a
+promising area.
+
+When we have several populations, we could use a strategy to
+have some populations tending to exploration and others to exploitation. The
+idea is that this strategy keeps a natural balance between the two extremes.
+The problem remains: how do we set the parameters now that we have many more, a
+set for each population? A simple heterogeneous strategy proposed by \cite{gong2011distributed} 
+randomly sets each population's parameters. Although simple, the random
+strategy has yielded promising results in other multi-population algorithms .
+The other strategy found in the literature is using a single, well-balanced
+configuration for each metaheuristic algorithm and repeating the same
+configuration in all populations. In Fig. \ref{fig:s_strategies} on the top
+image, we can see a representation of the homogenous strategy (Fig.
+\ref{fig:s_homogeneo}) and the heterogeneous strategy at the bottom (Fig.
+\ref{fig:s_heterogeneo}).
+
+\subsection{Control Problem}\label{sub:fuzzy}
+
+The benchmark control problem we use to validate our proposal is the rear-wheel
+controller described by Paden \cite{paden_survey_2016}. In this control problem, we have as
+input the error $e$ that is the distance between the rear wheel and the desired
+trajectory. The error is positive if the wheel is to the left of the path and
+negative if it is to the right. The second input is the angle between the
+tangent at the nearest point in the trajectory and the bearing
+vector $\theta_{e}$. The output is the angular velocity $\omega$. We take the
+design of the controller from a previous work \cite{mancilla2022tracking} using five membership
+functions for each input variable. We have two signs because the error and the
+heading can be left or right. We are tuning the ten parameters defining each
+MF. The fixed and variable parameters of the MFs are in Table \ref{tab:mfs}. We proposed a
+controller with a total of twenty five fuzzy rules.
+
+\begin{table}[htbp] \caption{ Parameters for the controller's MFs}
+    \label{tab:mfs} \centering
+    \begin{tabular}{cccc}
+    \hline
+     \textbf{Variable} & \textbf{Linguistic Value} & \textbf{MF}& \textbf{Parameters}  \\
+    \hline
+    $\theta_e$ & high negative  & $\mu_{trap}$  & $[-50, -5, -b, -b+c]$     \\ 
+    $\theta_e$ & medium negative& $\mu_{tria}$  & $[-d-e, -d, -d+e]$     \\ 
+    $\theta_e$ & low            & $\mu_{tria}$  & $[-a, 0, a]$     \\ 
+    $\theta_e$ & medium positive& $\mu_{tria}$  & $[d-e, d, d+e]$     \\ 
+    $\theta_e$ & high positive  & $\mu_{trap}$  & $[b-c, b, 5, 50]$ \\
+
+    \hline
+    $error$ & high negative  & $\mu_{trap}$  & $[-50, -5, -g, -g+h]$     \\ 
+    $error$ & medium negative& $\mu_{tria}$  & $[-i-j, -i, -i+j]$     \\ 
+    $error$ & low            & $\mu_{tria}$  & $[-f, 0, f]$     \\ 
+    $error$ & medium positive& $\mu_{tria}$  & $[i-j, i, i+j]$     \\ 
+    $error$ & high positive  & $\mu_{trap}$  & $[g-h, g, 5, 50]$ \\
+
+    \hline
+    $\omega$ & high negative  & $\mu_{trap}$  & $[-50, -5, -1, -0.5]$     \\ 
+    $\omega$ & medium negative& $\mu_{tria}$  & $[-1, -0.5, 0]$     \\ 
+    $\omega$ & low            & $\mu_{tria}$  & $[-0.5, 0, 0.5]$     \\ 
+    $\omega$ & medium positive& $\mu_{tria}$  & $[0, 0.5,1]$     \\ 
+    $\omega$ & high positive  & $\mu_{trap}$  & $[0.5, 1 ,5, 50]$     \\ 
+    \hline
+\end{tabular}
+\end{table}
+
+The fitness of each candidate solution, in this case, the fuzzy controller
+generated with the parameterized MFs, is established by running three
+simulations in these three paths (see Fig. \ref{fig:Routes}).
+
+\begin{figure}
+  \centering
+  \includegraphics[angle=0,width=1\textwidth]{Routes}
+  \caption{Paths used for fitness evaluation.}
+  \label{fig:Routes} 
+\end{figure}
+
+\subsection{Setup}\label{sub:conf}
+
+The distributed algorithms' parameters are shown in Table \ref{tab:alg_params}.
+We configured the multi-population algorithm with seven populations of size
+nine, this population size may seem small, but we need to remember that this is
+a multi-population algorithm, so the total population size is estimated by
+multiplying the population size by the number of sub-populations, in this case
+the total size is 63. Each worker process will execute four iterations
+(generations) of the algorithm, again the number of generations is small, but
+this is by design. The small number of generations is required to distribute
+the work among all worker processes. All populations will complete four cycles;
+this means they will pass through the combinator module four times. We also
+show the values we use to initialize the homogenous and heterogeneous
+parameters.
+
+Using interval notation, we defined a range from each parameter. We
+can see that the interval includes the value specified for the homogenous
+strategy in each parameter. For mutation probability in GAs, we set the value
+at 0.3, and the range for random values is between 0.1 and 0.5. We experimented
+with widening the range but did not receive better results. We repeated the
+same setup for the other parameters. We wanted to maintain the speed limit sign
+for PSO, so we established a range of $[-0.20, -0.30]$ and $[0.20, 0.30]$,
+respectively. 
+
+\begin{table}[htbp] 
+\small
+\caption{Parameter values for the algorithms compared}\label{tab:alg_params}
+\begin{tabular}{l l l l}
+\hline
+\textbf{Algorithm} & \textbf{Parameter}	& \textbf{Fixed Value} & \textbf{Random Range}\\ 
+                   &                    &                      &      [min,max]\\ \hline
+GA & Selection & Tournament Selection (k =3)  \\
+& Mutation  & Gaussian ($\mu=0.0$ and $\sigma=0.2$)  \\
+& Mutation probability  &  0.3 &  [0.1, 0.5] \\
+& Crossover  & One point (probability = 0.7) &  [0.3, 0.9]   \\
+\hline
+PSO & Topology & Fully connected  \\
+& Speed limit & Min=-0.25 & Min=[-0.20, -0.30] \\
+&             & Max=0.25 &  Max=[0.20, 0.30]  \\
+& Cognitive and Social & $C_1=2,C_2=2$ &  [1.0, 2.0]  \\
+\hline
+Polutations& Pop Size &  9  \\
+& Populations & 7 \\
+& Iterations & 4 \\
+& Cycles & 4   \\
+& \#Func. Eval. & 1008 \\
+\hline
+\end{tabular}
+\end{table}
+
+\section{Results}\label{sec:results}
+
+In Table \ref{tab:rmse}, we show the results of the experiments. Results with
+parameters with random values are compared with the distributed
+versions with fixed parameters found in our previous work.
+
+We note that the distributed PSO with random parameters implementation
+yields better results than the distributed homogeneous parameters on average.
+Here we show the average error obtained in 30 runs. Here we show the best RMSE
+obtained by the best fuzzy controller found in each run.
+
+\begin{table}[ht]
+    \caption{Results the best RMSE.} 
+    \label{tab:rmse}
+    \centering
+    \setlength{\tabcolsep}{3pt}
+    \begin{tabular}{|c|c|c|c|c|c|c|}
+      \hline
+      \multicolumn{7}{|c|}{RMSE} \\ \hline
+      & \multicolumn{3}{|c|}{Homogeneous Parameters}  & \multicolumn{3}{c|}{ Heterogeneous Parameters} \\
+         \cline{2-7}
+
+             & GA         & PSO        & PSO-GA       & GA        & PSO        & PSO-GA  \\ \hline
+    AVERAGE   & 0.01091   & 0.00645    & 0.00656      & 0.01029    & 0.00632     & 0.00634\\ \hline
+    STDDEV    & 0.00600   & 0.00148	   & 0.00185      & 0.00332    & 0.00165     & 0.00135\\ \hline   
+    MEDIAN    & 0.00955	 	& 0.00643	   & 0.00625      & 0.01021    & 0.00628     & 0.00610\\ \hline 
+    MIN       & 0.00384	  & 0.00360	   & 0.00336      & 0.00399    & 0.00310     & 0.00388\\ \hline   
+    MAX       & 0.03455	  & 0.01000    & 0.01168      & 0.01584    & 0.00891     & 0.00889\\ \hline    
+      \end{tabular}
+\end{table}
+
+In Table \ref{tab:time} we show the time needed to complete each run in
+seconds. When comparing the time required to complete each execution of the
+algorithms, there is no substantial difference between versions. As expected,
+the distributed version with random parameters turned out similar to that with
+fixed parameters. An interesting case is the GA that took less time to complete
+in the heterogeneous strategy. This shortening in time could be related to the
+time it takes for a simulation to complete. Because we terminate the simulation
+early if the robot loses track of the trajectory, the time required to complete
+the simulations for a population of incapable individuals could take less time.
+This result, however, does not happen in the PSO case, where the times are
+similar. 
+
+\setlength{\tabcolsep}{3pt}
+\begin{table}[ht]
+  \caption{Results the time in seconds needed to complete each run.}
+  \label{tab:time}
+  \centering
+  \begin{tabular}{|c|c|c|c|c|c|c|} 
+    \hline
+    \multicolumn{7}{|c|}{Time (Sec.)} \\ \hline
+        & \multicolumn{3}{|c|} {Homogeneous Parameters} &  \multicolumn{3}{c|}{Heterogeneous Parameters} \\ 
+        \cline{2-7}  
+             & GA         & PSO        & PSO-GA       & GA        & PSO        & PSO-GA  \\ \hline
+  AVERAGE    & 421.6722   & 415.6491   & 431.5258     & 395.7506  & 415.7994   & 409.9042     \\ \hline
+  STDDEV     &  28.5406   &  23.4744   &  22.6012     &  26.5488  &  20.4787   &  24.8533     \\ \hline   
+  MEDIAN     & 417.8451   & 412.6850   & 432.3661     & 392.8096  & 414.6650   & 408.4821     \\ \hline 
+  MIN        & 364.6546   & 365.8164   & 394.6160     & 340.6548  & 374.8318   & 372.2037     \\ \hline   
+  MAX        & 526.7686   & 467.4715   & 478.8072     & 461.4638  & 461.9615   & 465.2711     \\ \hline    
+   \end{tabular}
+ \end{table}
+
+We did the statistical Ztest, comparing the same algorithms but with
+homogeneous parameters that are those of the column that we see on the left
+side and the algorithms with heterogeneous parameters that we see in the upper
+row. We concluded that there is not enough evidence to reject the null
+hypothesis. The p-value results show that it is not within the acceptable
+confidence interval. We show in Table \ref{tab:ztest}.
+
+ \begin{table}[ht]
+  \caption{Statistical Ztest.}
+  \label{tab:ztest}
+  \centering
+  \setlength{\tabcolsep}{8pt}
+  \begin{tabular}{|c|c|c|c|c|}
+    \hline
+    \multicolumn{5}{|c|}{  p-values,  Z-test $\alpha$=0.05,  independent samples,  unequal variances,  30 samples  }  \\ [1ex] \hline
+    \multicolumn{2}{|c|}{} & \multicolumn{3}{c|} {Heterogeneous Parameters} \\ \hline
+             &                                      &  GA            &  PSO         & PSO-GA  \\ 
+             &  $H_a$ : $\mu_{eAi}$ $>$ $\mu_{eAj}$ &  X:0.01029    & X:0.00632     & X:0.00634 \\ 
+             &                                      & SD:0.00332    & SD:0.00165    & SD:0.00135 \\  
+             \hline
+  \multirow{9}{*}{\begin {sideways}Homogeneous Params \end{sideways}} 
+                      & GA     & \cellcolor{lightgray}        &  & \\ 
+             &  X : 0.01091   & 0.3119 \cellcolor{lightgray} &  & \\ 
+             & SD : 0.00600   & \cellcolor{lightgray}        &  & \\ 
+             \cline{2-5}
+                     & PSO     &        & \cellcolor{lightgray}        & \\ 
+             &  X : 0.00645   &        & 0.3819 \cellcolor{lightgray} & \\
+             & SD : 0.00148   &        & \cellcolor{lightgray}        & \\ 
+             \cline{2-5}  
+                    & PSO-GA   &        &       & \cellcolor{lightgray}        \\ 
+             &  X : 0.00656   &        &       & 0.3085 \cellcolor{lightgray} \\ 
+             & SD : 0.00185   &        &       & \cellcolor{lightgray}        \\
+              \hline    
+  \end{tabular}
+\end{table}
+
+We show a box-plot of the data in Fig.\ref{fig:boxplot}, and we can see that
+there is no significant difference between the median of the same algorithms.
+
+\begin{figure}[ht]
+  \centering
+  \includegraphics[angle=0,width=1\textwidth]{boxplot}
+  \caption{Box-plot of the data.}
+  \label{fig:boxplot} 
+\end{figure}
+
+\section{Conclusions and Future Work}\label{sec:conclusions}
+
+In conclusion we presented a design and implementation of a distributed 
+multi-population, multi-algorithm method to optimize the parameters of 
+the MFs for a fuzzy controller.
+
+We run experiments with both heterogeneous and homogeneous configurations
+of the algorithms.
+
+Preliminary results show that a distributed execution with homogeneous 
+parameters gives similar results to a distributed implementation with 
+random parameters in a similar time.  By using random heterogeneous 
+parameters, we do not spend the time needed to find a suitable set of
+parameters, we only need to specify a range.
+
+For future work, we need to run the experiments in a computer with 
+more cores or on the cloud. As a next step,  we could implement 
+other optimization algorithms. Also, there are other parameters that 
+are important like the poplulation size and the number of iterations.
+Moreover, we can also investigate if a dynamic tuning of parameters yields 
+better results. For instance, the Combinator process could adjust the parameters 
+in each iterations taking into account certain metrics of the population like 
+the diversity or the average fitness.
+
+%
+% ---- Bibliography ----
+%
+% BibTeX users should specify bibliography style 'splncs04'.
+% References will then be sorted and formatted in the correct style.
+%
+\bibliographystyle{splncs03_unsrt}
+\bibliography{biblio}
+%
+%\begin{thebibliography}{8}
+
+%\end{thebibliography}
+\end{document}
